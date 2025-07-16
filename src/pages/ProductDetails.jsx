@@ -1,7 +1,8 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Container, Row, Col, Button, Image, Accordion, Card, Form } from "react-bootstrap";
 import { Heart, Phone, ShoppingCart, Plus, Minus } from "lucide-react";
+import axios from "axios";
 
 const relatedProducts = [
   { id: 1, name: "Formal Pant", image: "/images/related1.jpg", price: "$35" },
@@ -9,7 +10,8 @@ const relatedProducts = [
   { id: 3, name: "Tie Set", image: "/images/related3.jpg", price: "$25" },
 ];
 
-const productData = {
+// Fallback product data
+const fallbackProductData = {
   id: 1272,
   name: "Formal Shirt",
   subtitle: "Long Sleeve Formal Shirt For Man's",
@@ -38,11 +40,15 @@ const productData = {
 };
 
 const ProductDetails = () => {
+  const { id } = useParams(); // Get product ID from URL
   const [zoom, setZoom] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
   const [activeAccordion, setActiveAccordion] = useState("description");
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [productData, setProductData] = useState(fallbackProductData);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   const handleQuantityChange = (action) => {
@@ -83,6 +89,84 @@ const ProductDetails = () => {
     navigate('/order', { state: orderData });
   };
 
+  useEffect(() => {
+    const fetchProductData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Use the ID from URL params or fallback to default
+        const productId = id || fallbackProductData.id;
+        
+        console.log("Fetching product with ID:", productId);
+        
+        const response = await axios.get(`http://ecommerce-backend.test/api/product/${productId}`);
+        
+        console.log("API Response:", response.data);
+        
+        // Transform API response to match component structure
+        const apiData = response.data;
+        const processedData = {
+          id: apiData.id,
+          name: apiData.name,
+          subtitle: apiData.description || "", // Use description as subtitle
+          code: apiData.slug || apiData.id.toString(),
+          price: `${apiData.price}`,
+          sizes: apiData.sizes?.map(size => size.name) || [], // Extract size names
+          image: apiData.image ? `http://ecommerce-backend.test/storage/${apiData.image}` : fallbackProductData.image,
+          description: [
+            `Category: ${apiData.category?.name || 'N/A'}`,
+            `Stock: ${apiData.stock || 0} available`,
+            apiData.description || 'No description available',
+            ...(apiData.is_featured ? ['Featured Product'] : []),
+            ...(apiData.is_new ? ['New Arrival'] : []),
+            ...(apiData.is_on_sale ? ['On Sale'] : [])
+          ],
+          deliveryInfo: fallbackProductData.deliveryInfo, // Use fallback for delivery info
+          contactInfo: fallbackProductData.contactInfo, // Use fallback for contact info
+          stock: apiData.stock || 0,
+          category: apiData.category?.name || 'N/A',
+          isActive: apiData.is_active,
+          isFeatured: apiData.is_featured,
+          isNew: apiData.is_new,
+          isOnSale: apiData.is_on_sale,
+          salePrice: apiData.sale_price
+        };
+        
+        console.log("Processed Product Data:", processedData);
+        setProductData(processedData);
+        
+      } catch (error) {
+        console.error("Error fetching product data:", error);
+        setError(error.message);
+        
+        // Use fallback data if API fails
+        setProductData(fallbackProductData);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProductData();
+  }, [id]); // Depend on the ID from URL params
+
+  if (loading) {
+    return (
+      <Container className="my-5">
+        <div className="text-center">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-3">Loading product details...</p>
+        </div>
+      </Container>
+    );
+  }
+
+  if (error) {
+    console.warn("Using fallback data due to error:", error);
+  }
+
   return (
     <Container className="my-5">
       <Row className="g-4">
@@ -112,15 +196,29 @@ const ProductDetails = () => {
           
           <div className="d-flex align-items-center gap-3 mb-3">
             <span className="text-muted">Code: {productData.code}</span>
-            <span className="badge bg-success">In Stock</span>
+            <span className={`badge ${productData.stock > 0 ? 'bg-success' : 'bg-danger'}`}>
+              {productData.stock > 0 ? `In Stock (${productData.stock})` : 'Out of Stock'}
+            </span>
+            {productData.isFeatured && <span className="badge bg-primary">Featured</span>}
+            {productData.isNew && <span className="badge bg-info">New</span>}
+            {productData.isOnSale && <span className="badge bg-warning">On Sale</span>}
           </div>
           
-          <h3 className="text-danger fw-bold mb-4">{productData.price}</h3>
+          <h3 className="text-danger fw-bold mb-4">
+            {productData.salePrice ? (
+              <>
+                <span className="text-decoration-line-through text-muted me-2">{productData.price}</span>
+                <span>${productData.salePrice}</span>
+              </>
+            ) : (
+              productData.price
+            )}
+          </h3>
           
           <div className="mb-4">
             <h5 className="mb-3">Size:</h5>
             <div className="d-flex gap-2">
-              {productData.sizes.map((size) => (
+              {Array.isArray(productData.sizes) && productData.sizes.map((size) => (
                 <Button
                   key={size}
                   variant={selectedSize === size ? "danger" : "outline-dark"}
@@ -166,7 +264,7 @@ const ProductDetails = () => {
               size="lg" 
               className="px-4 flex-grow-1"
               onClick={handleOrderNow}
-              disabled={!selectedSize}
+              disabled={!selectedSize || productData.stock === 0}
             >
               Order Now ({quantity})
             </Button>
@@ -175,7 +273,7 @@ const ProductDetails = () => {
               size="lg" 
               className="px-4"
               onClick={handleAddToCart}
-              disabled={!selectedSize}
+              disabled={!selectedSize || productData.stock === 0}
             >
               <ShoppingCart size={20} className="me-2" />
               Add To Cart
@@ -193,22 +291,30 @@ const ProductDetails = () => {
             <Accordion.Item eventKey="description">
               <Accordion.Header>Description</Accordion.Header>
               <Accordion.Body>
-                <ul className="list-unstyled">
-                  {productData.description.map((item, index) => (
-                    <li key={index} className="mb-2">{item}</li>
-                  ))}
-                </ul>
+                {Array.isArray(productData.description) ? (
+                  <ul className="list-unstyled">
+                    {productData.description.map((item, index) => (
+                      <li key={index} className="mb-2">{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>{productData.description || 'No description available'}</p>
+                )}
               </Accordion.Body>
             </Accordion.Item>
             
             <Accordion.Item eventKey="delivery">
               <Accordion.Header>Delivery Information</Accordion.Header>
               <Accordion.Body>
-                <ul className="list-unstyled">
-                  {productData.deliveryInfo.map((item, index) => (
-                    <li key={index} className="mb-2">{item}</li>
-                  ))}
-                </ul>
+                {Array.isArray(productData.deliveryInfo) ? (
+                  <ul className="list-unstyled">
+                    {productData.deliveryInfo.map((item, index) => (
+                      <li key={index} className="mb-2">{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>{productData.deliveryInfo || 'No delivery information available'}</p>
+                )}
               </Accordion.Body>
             </Accordion.Item>
             
@@ -216,14 +322,18 @@ const ProductDetails = () => {
               <Accordion.Header>Contact for Questions</Accordion.Header>
               <Accordion.Body>
                 <p className="fw-bold mb-3">Have question about this product? Please call:</p>
-                <ul className="list-unstyled">
-                  {productData.contactInfo.map((item, index) => (
-                    <li key={index} className="mb-2">
-                      <Phone size={16} className="me-2" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                {Array.isArray(productData.contactInfo) ? (
+                  <ul className="list-unstyled">
+                    {productData.contactInfo.map((item, index) => (
+                      <li key={index} className="mb-2">
+                        <Phone size={16} className="me-2" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>{productData.contactInfo || 'No contact information available'}</p>
+                )}
               </Accordion.Body>
             </Accordion.Item>
           </Accordion>

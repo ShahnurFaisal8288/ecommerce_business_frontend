@@ -1,21 +1,37 @@
-import { useState } from "react";
-import { User, Search, Phone, Heart, ShoppingCart, X, Menu } from 'lucide-react';
+import { useEffect, useState } from "react";
+import {
+  User,
+  Search,
+  Phone,
+  Heart,
+  ShoppingCart,
+  X,
+  Menu,
+} from "lucide-react";
+import { Link } from "react-router";
+import axios from "axios";
 
 const MainNavbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
-  
-  const navItems = [
-    { name: "Men's Fashion", href: "#" },
-    { name: "HOODIE", href: "#" },
-    { name: "Kurta", href: "#" },
-    { name: "Casual Shirt", href: "#" },
-    { name: "Formal Shirt", href: "#" },
-    { name: "Ban Collar Shirt", href: "#" },
-    { name: "Sweep Shirt", href: "#" },
-    { name: "Short Sleeve Shirt", href: "#" }
-  ];
+  const [navItems, setNavItems] = useState([]);
+
+  useEffect(() => {
+    const fetchNavItems = async () => {
+      try {
+        const response = await axios.get(
+          "http://ecommerce-backend.test/api/categories"
+        );
+        setNavItems(response.data);
+        // console.log(response.data);
+      } catch (error) {
+        console.error("Error fetching navigation items:", error);
+      }
+    };
+
+    fetchNavItems(); // Call the function inside useEffect
+  }, []);
 
   const customStyles = `
     <style>
@@ -55,13 +71,13 @@ const MainNavbar = () => {
   return (
     <>
       <div dangerouslySetInnerHTML={{ __html: customStyles }} />
-      
+
       {/* Bootstrap CSS */}
-      <link 
-        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" 
-        rel="stylesheet" 
+      <link
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+        rel="stylesheet"
       />
-      
+
       <div>
         {/* Top Bar */}
         <div className="bg-danger text-white py-2">
@@ -79,7 +95,10 @@ const MainNavbar = () => {
                     <span>Contact</span>
                   </button>
                   <button className="btn btn-link text-white p-0 text-decoration-none">
-                    <User className="me-1" style={{ width: "16px", height: "16px" }} />
+                    <User
+                      className="me-1"
+                      style={{ width: "16px", height: "16px" }}
+                    />
                     <span>Login</span>
                   </button>
                 </div>
@@ -112,7 +131,7 @@ const MainNavbar = () => {
                   </div>
                   <div>
                     <h1 className="navbar-brand-custom mb-0 fs-4 fw-bold">
-                      FIG & FIT
+                      Ak's Shop
                     </h1>
                     <p className="text-muted mb-0" style={{ fontSize: "12px" }}>
                       Premium Fashion
@@ -128,13 +147,19 @@ const MainNavbar = () => {
                     type="text"
                     className="form-control search-focus py-2 pe-5 rounded-pill border-2"
                     placeholder="Search for products, brands and more..."
-                    style={{ backgroundColor: "#f8f9fa", borderColor: "#dee2e6" }}
+                    style={{
+                      backgroundColor: "#f8f9fa",
+                      borderColor: "#dee2e6",
+                    }}
                   />
                   <button
                     className="btn position-absolute end-0 top-50 translate-middle-y pe-3 bg-transparent border-0"
                     style={{ zIndex: 10 }}
                   >
-                    <Search className="text-muted" style={{ width: "20px", height: "20px" }} />
+                    <Search
+                      className="text-muted"
+                      style={{ width: "20px", height: "20px" }}
+                    />
                   </button>
                 </div>
               </div>
@@ -144,33 +169,44 @@ const MainNavbar = () => {
                 <div className="d-flex align-items-center justify-content-end gap-3">
                   {/* Phone Section */}
                   <div className="d-none d-lg-flex align-items-center phone-section">
-                    <Phone className="text-danger me-2" style={{ width: "20px", height: "20px" }} />
+                    <Phone
+                      className="text-danger me-2"
+                      style={{ width: "20px", height: "20px" }}
+                    />
                     <div>
                       <p className="mb-0 small fw-medium">Call Us Now:</p>
-                      <p className="mb-0 small text-danger fw-semibold">01644460875</p>
+                      <p className="mb-0 small text-danger fw-semibold">
+                        01644460875
+                      </p>
                     </div>
                   </div>
 
                   {/* Action Icons */}
                   <div className="d-flex align-items-center gap-2">
                     <button className="btn btn-light rounded-circle p-2 position-relative cart-icon">
-                      <Heart style={{ width: "24px", height: "24px" }} className="text-muted" />
+                      <Heart
+                        style={{ width: "24px", height: "24px" }}
+                        className="text-muted"
+                      />
                       {wishlistCount > 0 && (
                         <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                           {wishlistCount}
                         </span>
                       )}
                     </button>
-                    
+
                     <button className="btn btn-light rounded-circle p-2 position-relative cart-icon">
-                      <ShoppingCart style={{ width: "24px", height: "24px" }} className="text-muted" />
+                      <ShoppingCart
+                        style={{ width: "24px", height: "24px" }}
+                        className="text-muted"
+                      />
                       {cartCount > 0 && (
                         <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                           {cartCount}
                         </span>
                       )}
                     </button>
-                    
+
                     <div className="d-none d-md-block text-end ms-2">
                       <p className="mb-0 small text-muted">Cart amount</p>
                       <p className="mb-0 fs-6 fw-bold text-danger">৳ 0</p>
@@ -197,13 +233,12 @@ const MainNavbar = () => {
             <div className="d-flex justify-content-center py-3">
               <div className="d-flex flex-wrap justify-content-center gap-1">
                 {navItems.map((item, index) => (
-                  <a
+                  <Link
                     key={index}
-                    href={item.href}
-                    className="nav-link-custom px-4 py-2 rounded text-decoration-none text-dark fw-medium"
+                    className="px-2 text-dark text-decoration-none"
                   >
                     {item.name}
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -221,7 +256,10 @@ const MainNavbar = () => {
                 style={{ backgroundColor: "#ffffff" }}
               />
               <button className="btn position-absolute end-0 top-50 translate-middle-y pe-3 bg-transparent border-0">
-                <Search className="text-muted" style={{ width: "18px", height: "18px" }} />
+                <Search
+                  className="text-muted"
+                  style={{ width: "18px", height: "18px" }}
+                />
               </button>
             </div>
           </div>
