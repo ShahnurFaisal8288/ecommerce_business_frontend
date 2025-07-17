@@ -1,18 +1,19 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet } from "react-router-dom";
 // import './App.css'
-import MainNavbar from './components/Navbar'
-import Footer from './components/Footer'
-
+import MainNavbar from "./components/Navbar";
+import Footer from "./components/Footer";
+// import { CartProvider } from "./context/CartContext";
 
 function App() {
-
   return (
     <>
-    <MainNavbar />
-      <Outlet />
-      <Footer />
+      {/* <CartProvider> */}
+        <MainNavbar />
+        <Outlet />
+        <Footer />
+      {/* </CartProvider> */}
     </>
-  )
+  );
 }
 
-export default App
+export default App;
