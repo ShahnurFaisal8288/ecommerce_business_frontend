@@ -1,38 +1,83 @@
 import { ShoppingCart, Star } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Container, Row, Col, Card, Button, Badge } from "react-bootstrap";
+import { useGetAllProductsQuery } from "../redux/services/productService/productApi";
 
 const ProductSection = () => {
-  const [categories, setCategories] = useState([]);
-  const [groupedProducts, setGroupedProducts] = useState({});
+  const { data: products, isLoading, error } = useGetAllProductsQuery();
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch(
-          "http://ecommerce-backend.test/api/product"
-        );
-        const data = await response.json();
+  // Group products by category using useMemo for performance
+  const groupedProducts = useMemo(() => {
+    if (!products || !Array.isArray(products)) return {};
 
-        // Group products by category name
-        const grouped = {};
-        data.forEach((product) => {
-          const categoryName = product.category?.name || "Uncategorized";
-          if (!grouped[categoryName]) {
-            grouped[categoryName] = [];
-          }
-          grouped[categoryName].push(product);
-        });
-
-        setGroupedProducts(grouped);
-        console.log("Grouped products:", grouped);
-      } catch (error) {
-        console.error("Error fetching products:", error);
+    const grouped = {};
+    products.forEach((product) => {
+      const categoryName = product.category?.name || "Uncategorized";
+      if (!grouped[categoryName]) {
+        grouped[categoryName] = [];
       }
-    };
+      grouped[categoryName].push(product);
+    });
 
-    fetchProducts();
-  }, []);
+    return grouped;
+  }, [products]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <Container className="py-5">
+        <div
+          className="d-flex align-items-center justify-content-center"
+          style={{ minHeight: "400px" }}
+        >
+          <div className="text-center">
+            <div
+              className="spinner-border text-danger mb-3"
+              role="status"
+              style={{ width: "3rem", height: "3rem" }}
+            >
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <h4 className="text-muted">Loading Products...</h4>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Container className="py-5">
+        <div
+          className="d-flex align-items-center justify-content-center"
+          style={{ minHeight: "400px" }}
+        >
+          <div className="text-center">
+            <h4 className="text-danger">Error Loading Products</h4>
+            <p className="text-muted">Please try again later.</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
+  // No products state
+  if (!products || products.length === 0) {
+    return (
+      <Container className="py-5">
+        <div
+          className="d-flex align-items-center justify-content-center"
+          style={{ minHeight: "400px" }}
+        >
+          <div className="text-center">
+            <h4 className="text-muted">No Products Available</h4>
+            <p className="text-muted">Check back later for new products.</p>
+          </div>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container className="py-5">
@@ -52,6 +97,7 @@ const ProductSection = () => {
                     <Badge
                       bg="danger"
                       className="position-absolute top-0 start-0 m-2"
+                      style={{ zIndex: 1 }}
                     >
                       NEW
                     </Badge>
@@ -63,17 +109,21 @@ const ProductSection = () => {
                   >
                     {product.image ? (
                       <img
-                        src={`http://ecommerce-backend.test/storage/${product.image}`}
+                        src={`https://ecommerce.magneticcodes.com/${product.image}`}
                         alt={product.name}
                         className="img-fluid"
-                        style={{ maxHeight: "100%", objectFit: "cover" }}
+                        style={{
+                          maxHeight: "100%",
+                          objectFit: "cover",
+                          width: "100%",
+                        }}
                       />
                     ) : (
                       <span className="text-muted">No Image</span>
                     )}
                   </div>
 
-                  <Card.Body>
+                  <Card.Body className="d-flex flex-column">
                     <Card.Title className="text-truncate">
                       {product.name}
                     </Card.Title>
@@ -112,21 +162,23 @@ const ProductSection = () => {
                       )}
                     </div>
 
-                    <Button
-                      href={`/product/${product.id}`}
-                      variant="dark"
-                      className="w-100 d-flex align-items-center justify-content-center gap-2"
-                    >
-                      <ShoppingCart size={20} />
-                      Order Now
-                    </Button>
-                    <Button
-                      variant="outline-danger"
-                      className="w-100 d-flex align-items-center justify-content-center gap-2 mt-2"
-                    >
-                      <ShoppingCart size={20} />
-                      Add to Cart
-                    </Button>
+                    <div className="mt-auto">
+                      <Button
+                        href={`/product/${product.id}`}
+                        variant="dark"
+                        className="w-100 d-flex align-items-center justify-content-center gap-2 mb-2"
+                      >
+                        <ShoppingCart size={20} />
+                        Order Now
+                      </Button>
+                      <Button
+                        variant="outline-danger"
+                        className="w-100 d-flex align-items-center justify-content-center gap-2"
+                      >
+                        <ShoppingCart size={20} />
+                        Add to Cart
+                      </Button>
+                    </div>
                   </Card.Body>
                 </Card>
               </Col>
