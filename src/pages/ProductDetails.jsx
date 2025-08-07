@@ -1,6 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Container, Row, Col, Button, Image, Accordion, Card, Form, Spinner, Alert } from "react-bootstrap";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  Container,
+  Row,
+  Col,
+  Button,
+  Image,
+  Accordion,
+  Card,
+  Form,
+  Spinner,
+  Alert,
+} from "react-bootstrap";
 import { Heart, Phone, ShoppingCart, Plus, Minus } from "lucide-react";
 import axios from "axios";
 
@@ -11,116 +22,118 @@ const ProductDetails = () => {
   const [activeAccordion, setActiveAccordion] = useState("description");
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [productData, setProductData] = useState(null);
+  // const [productData, setProductData] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const productData = location?.state || null;
+  console.log("Product Data:", productData);
+
+  // Get available stock for selected size
+  const getAvailableStock = () => {
+    if (!selectedSize || !productData?.sizes) return productData?.stock || 0;
+
+    const sizeData = productData.sizes.find(
+      (size) => size.display_name === selectedSize
+    );
+    return sizeData?.pivot?.quantity || 0;
+  };
 
   const handleQuantityChange = (action) => {
+    const maxStock = getAvailableStock();
+
     if (action === "increase") {
-      setQuantity(prev => Math.min(prev + 1, productData?.stock || 1));
+      setQuantity((prev) => Math.min(prev + 1, maxStock));
     } else if (action === "decrease") {
-      setQuantity(prev => Math.max(prev - 1, 1));
+      setQuantity((prev) => Math.max(prev - 1, 1));
+    }
+  };
+
+  const handleSizeChange = (size) => {
+    setSelectedSize(size);
+    // Reset quantity when size changes to ensure it doesn't exceed new size's stock
+    const sizeData = productData.sizes.find((s) => s.display_name === size);
+    const maxStock = sizeData?.pivot?.quantity || 0;
+    if (quantity > maxStock) {
+      setQuantity(Math.max(1, Math.min(quantity, maxStock)));
     }
   };
 
   const handleAddToCart = () => {
-    if (!selectedSize || productData?.stock === 0) {
+    if (!productData?.sizes || productData.sizes.length === 0) {
+      // No sizes available, proceed without size selection
+      if (productData?.stock === 0) {
+        alert("Product is out of stock");
+        return;
+      }
+    } else if (!selectedSize) {
       alert("Please select a size first");
       return;
     }
-    alert(`Added ${quantity} ${productData.name} (Size: ${selectedSize}) to cart`);
+
+    const availableStock = getAvailableStock();
+    if (availableStock === 0) {
+      alert("Selected size is out of stock");
+      return;
+    }
+
+    alert(
+      `Added ${quantity} ${productData.name} ${
+        selectedSize ? `(Size: ${selectedSize})` : ""
+      } to cart`
+    );
   };
 
   const handleOrderNow = () => {
-    if (!selectedSize || productData?.stock === 0) {
+    if (productData?.sizes && productData.sizes.length > 0 && !selectedSize) {
       alert("Please select a size first");
       return;
     }
-    
+
+    const availableStock = getAvailableStock();
+    if (availableStock === 0) {
+      alert("Product is out of stock");
+      return;
+    }
+
     const price = parseFloat(productData.sale_price || productData.price);
     const orderData = {
-      items: [{
-        id: productData.id,
-        name: productData.name,
-        quantity: quantity,
-        price: price,
-        size: selectedSize,
-        total: price * quantity
-      }],
-      subtotal: price * quantity
+      items: [
+        {
+          id: productData.id,
+          name: productData.name,
+          quantity: quantity,
+          price: price,
+          size: selectedSize || null,
+          total: price * quantity,
+        },
+      ],
+      subtotal: price * quantity,
     };
 
-    navigate('/order', { state: orderData });
-    console.log('PassingData',{ state: orderData })
+    navigate("/order", { state: orderData });
+    console.log("PassingData", { state: orderData });
   };
 
-
-  useEffect(() => {
-    const fetchProductData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await axios.get(`http://ecommerce-backend.test/api/product/${id}`);
-        console.log("API Response:", response.data);
-        
-        // Set main product data
-        setProductData(response.data.product);
-        
-        // Set related products with full image URLs
-        const processedRelatedProducts = response.data.related_products.map(product => ({
-          ...product,
-          image: `http://ecommerce-backend.test/storage/${product.image}`
-        }));
-        setRelatedProducts(processedRelatedProducts);
-        
-      } catch (error) {
-        console.error("Error fetching product data:", error);
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProductData();
-  }, [id]);
-
-  if (loading) {
-    return (
-      <Container className="my-5">
-        <div className="text-center">
-          <Spinner animation="border" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </Spinner>
-          <p className="mt-3">Loading product details...</p>
-        </div>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container className="my-5">
-        <Alert variant="danger">
-          <h4>Error loading product</h4>
-          <p>{error}</p>
-        </Alert>
-      </Container>
-    );
-  }
-
+  // Show message if no product data
   if (!productData) {
     return (
       <Container className="my-5">
         <Alert variant="warning">
-          <h4>Product not found</h4>
+          <Alert.Heading>Product Not Found</Alert.Heading>
           <p>The requested product could not be found.</p>
+          <Link to="/">
+            <Button variant="outline-warning">Go Back to Home</Button>
+          </Link>
         </Alert>
       </Container>
     );
   }
+
+  const availableStock = getAvailableStock();
+  const hasStock = availableStock > 0;
+  const hasSizes = productData.sizes && productData.sizes.length > 0;
 
   return (
     <Container className="my-5">
@@ -133,7 +146,7 @@ const ProductDetails = () => {
             onMouseLeave={() => setZoom(false)}
           >
             <Image
-              src={`http://ecommerce-backend.test/storage/${productData.image}`}
+              src={`https://ecommerce.magneticcodes.com/${productData.image}`}
               alt={productData.name}
               fluid
               className="h-100 w-100 object-fit-cover"
@@ -148,97 +161,147 @@ const ProductDetails = () => {
         <Col md={6}>
           <h1 className="fw-bold mb-2">{productData.name}</h1>
           <p className="text-muted mb-3">{productData.category?.name}</p>
-          
-          <div className="d-flex align-items-center gap-3 mb-3">
+
+          <div className="d-flex align-items-center gap-3 mb-3 flex-wrap">
             <span className="text-muted">Code: {productData.slug}</span>
-            <span className={`badge ${productData.stock > 0 ? 'bg-success' : 'bg-danger'}`}>
-              {productData.stock > 0 ? `In Stock (${productData.stock})` : 'Out of Stock'}
+            <span className={`badge ${hasStock ? "bg-success" : "bg-danger"}`}>
+              {hasStock
+                ? `In Stock ${
+                    selectedSize
+                      ? `(${availableStock})`
+                      : `(${productData.stock})`
+                  }`
+                : "Out of Stock"}
             </span>
-            {productData.is_featured && <span className="badge bg-primary">Featured</span>}
-            {productData.is_new && <span className="badge bg-info">New</span>}
-            {productData.is_on_sale && <span className="badge bg-warning">On Sale</span>}
+            {productData.is_featured === 1 && (
+              <span className="badge bg-primary">Featured</span>
+            )}
+            {productData.is_new === 1 && (
+              <span className="badge bg-info">New</span>
+            )}
+            {productData.is_on_sale === 1 && (
+              <span className="badge bg-warning">On Sale</span>
+            )}
           </div>
-          
+
           <h3 className="text-danger fw-bold mb-4">
             {productData.sale_price ? (
               <>
-                <span className="text-decoration-line-through text-muted me-2">${productData.price}</span>
+                <span className="text-decoration-line-through text-muted me-2">
+                  ${productData.price}
+                </span>
                 <span>${productData.sale_price}</span>
               </>
             ) : (
               `$${productData.price}`
             )}
           </h3>
-          
-          {productData.sizes && productData.sizes.length > 0 && (
+
+          {hasSizes && (
             <div className="mb-4">
               <h5 className="mb-3">Size:</h5>
-              <div className="d-flex gap-2">
-                {productData.sizes.map((size) => (
-                  <Button
-                    key={size.id}
-                    variant={selectedSize === size.display_name ? "danger" : "outline-dark"}
-                    size="lg"
-                    onClick={() => setSelectedSize(size.display_name)}
-                    className="px-4"
-                  >
-                    {size.display_name}
-                  </Button>
-                ))}
+              <div className="d-flex gap-2 flex-wrap">
+                {productData.sizes.map((size) => {
+                  const sizeStock = size.pivot?.quantity || 0;
+                  const isOutOfStock = sizeStock === 0;
+
+                  return (
+                    <Button
+                      key={size.id}
+                      variant={
+                        selectedSize === size.display_name
+                          ? "danger"
+                          : isOutOfStock
+                          ? "outline-secondary"
+                          : "outline-dark"
+                      }
+                      size="lg"
+                      onClick={() =>
+                        !isOutOfStock && handleSizeChange(size.display_name)
+                      }
+                      className="px-4 position-relative"
+                      disabled={isOutOfStock}
+                      title={
+                        isOutOfStock ? "Out of stock" : `${sizeStock} available`
+                      }
+                    >
+                      {size.display_name}
+                      {isOutOfStock && (
+                        <span className="position-absolute top-50 start-50 translate-middle text-muted">
+                          ✕
+                        </span>
+                      )}
+                    </Button>
+                  );
+                })}
               </div>
+              {selectedSize && (
+                <small className="text-muted">
+                  {availableStock} items available in {selectedSize}
+                </small>
+              )}
             </div>
           )}
 
           <div className="mb-4">
             <h5 className="mb-3">Quantity:</h5>
             <div className="d-flex align-items-center gap-3">
-              <Button 
-                variant="outline-secondary" 
+              <Button
+                variant="outline-secondary"
                 onClick={() => handleQuantityChange("decrease")}
                 disabled={quantity <= 1}
               >
                 <Minus size={18} />
               </Button>
-              <Form.Control 
-                type="number" 
+              <Form.Control
+                type="number"
                 value={quantity}
                 min="1"
-                max={productData.stock}
-                onChange={(e) => setQuantity(Math.max(1, Math.min(parseInt(e.target.value) || 1, productData.stock)))}
+                max={availableStock}
+                onChange={(e) => {
+                  const newQuantity = parseInt(e.target.value) || 1;
+                  setQuantity(
+                    Math.max(1, Math.min(newQuantity, availableStock))
+                  );
+                }}
                 style={{ width: "70px", textAlign: "center" }}
               />
-              <Button 
-                variant="outline-secondary" 
+              <Button
+                variant="outline-secondary"
                 onClick={() => handleQuantityChange("increase")}
-                disabled={quantity >= productData.stock}
+                disabled={quantity >= availableStock}
               >
                 <Plus size={18} />
               </Button>
             </div>
+            <small className="text-muted">
+              Maximum: {availableStock} items
+            </small>
           </div>
 
-          <div className="d-flex gap-3 mb-5">
-            <Button 
-              variant="danger" 
-              size="lg" 
+          <div className="d-flex gap-3 mb-5 flex-wrap">
+            <Button
+              variant="danger"
+              size="lg"
               className="px-4 flex-grow-1"
               onClick={handleOrderNow}
-              disabled={!selectedSize || productData.stock === 0}
+              disabled={!hasStock || (hasSizes && !selectedSize)}
+              style={{ minWidth: "150px" }}
             >
               Order Now ({quantity})
             </Button>
-            <Button 
-              variant="outline-danger" 
-              size="lg" 
+            <Button
+              variant="outline-danger"
+              size="lg"
               className="px-4"
               onClick={handleAddToCart}
-              disabled={!selectedSize || productData.stock === 0}
+              disabled={!hasStock || (hasSizes && !selectedSize)}
             >
               <ShoppingCart size={20} className="me-2" />
               Add To Cart
             </Button>
-            <Button 
-              variant={isWishlisted ? "danger" : "outline-secondary"} 
+            <Button
+              variant={isWishlisted ? "danger" : "outline-secondary"}
               size="lg"
               onClick={() => setIsWishlisted(!isWishlisted)}
             >
@@ -246,19 +309,24 @@ const ProductDetails = () => {
             </Button>
           </div>
 
-          <Accordion activeKey={activeAccordion} onSelect={(e) => setActiveAccordion(e)}>
+          <Accordion
+            activeKey={activeAccordion}
+            onSelect={(e) => setActiveAccordion(e)}
+          >
             <Accordion.Item eventKey="description">
               <Accordion.Header>Description</Accordion.Header>
               <Accordion.Body>
-                <p>{productData.description || 'No description available'}</p>
+                <p>{productData.description || "No description available"}</p>
               </Accordion.Body>
             </Accordion.Item>
-            
+
             <Accordion.Item eventKey="delivery">
               <Accordion.Header>Delivery Information</Accordion.Header>
               <Accordion.Body>
                 <ul className="list-unstyled">
-                  <li className="mb-2">Order today and receive it within 02 - 03 days</li>
+                  <li className="mb-2">
+                    Order today and receive it within 02 - 03 days
+                  </li>
                   <li className="mb-2">Quality Product</li>
                   <li className="mb-2">Cash on Delivery Available</li>
                   <li className="mb-2">Delivery Charge Inside Dhaka 60 TK</li>
@@ -266,11 +334,13 @@ const ProductDetails = () => {
                 </ul>
               </Accordion.Body>
             </Accordion.Item>
-            
+
             <Accordion.Item eventKey="contact">
               <Accordion.Header>Contact for Questions</Accordion.Header>
               <Accordion.Body>
-                <p className="fw-bold mb-3">Have question about this product? Please call:</p>
+                <p className="fw-bold mb-3">
+                  Have question about this product? Please call:
+                </p>
                 <ul className="list-unstyled">
                   <li className="mb-2">
                     <Phone size={16} className="me-2" />
@@ -296,20 +366,29 @@ const ProductDetails = () => {
           <h3 className="mb-4 border-bottom pb-2">Related Products</h3>
           <div className="d-flex flex-wrap gap-4">
             {relatedProducts.map((product) => (
-              <Card key={product.id} style={{ width: '18rem' }} className="shadow-sm hover-shadow">
-                <Card.Img 
-                  variant="top" 
+              <Card
+                key={product.id}
+                style={{ width: "18rem" }}
+                className="shadow-sm hover-shadow"
+              >
+                <Card.Img
+                  variant="top"
                   src={product.image}
-                  style={{ height: '250px', objectFit: 'cover' }} 
+                  style={{ height: "250px", objectFit: "cover" }}
                 />
                 <Card.Body>
-                  <Card.Title>{product.name}</Card.Title>
+                  <Card.Title className="text-truncate">
+                    {product.name}
+                  </Card.Title>
                   <div className="d-flex justify-content-between align-items-center">
-                    <span className="text-danger fw-bold">${product.price}</span>
-                    <Button variant="outline-danger" size="sm">
-                      <ShoppingCart size={16} className="me-1" />
-                      Add to Cart
-                    </Button>
+                    <span className="text-danger fw-bold">
+                      ${product.sale_price || product.price}
+                    </span>
+                    <Link to={`/product/${product.id}`}>
+                      <Button variant="outline-danger" size="sm">
+                        View Details
+                      </Button>
+                    </Link>
                   </div>
                 </Card.Body>
               </Card>

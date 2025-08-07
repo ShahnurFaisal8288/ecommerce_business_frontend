@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import { useSelector } from "react-redux";
 
 const MainNavbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -17,6 +18,10 @@ const MainNavbar = () => {
   const [wishlistItems, setWishlistItems] = useState([]);
   const [navItems, setNavItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const cartData = useSelector((state) => state.cartItems);
+
+  console.log("Cart Data:", cartData);
 
   // Calculate derived values
   const cartCount = cartItems.reduce((sum, item) => sum + 1, 0);
@@ -27,7 +32,7 @@ const MainNavbar = () => {
   useEffect(() => {
     const savedCart = localStorage.getItem("cart");
     const savedWishlist = localStorage.getItem("wishlist");
-    
+
     if (savedCart) setCartItems(JSON.parse(savedCart));
     if (savedWishlist) setWishlistItems(JSON.parse(savedWishlist));
 
@@ -42,7 +47,9 @@ const MainNavbar = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get("http://ecommerce-backend.test/api/categories");
+      const response = await axios.get(
+        "http://ecommerce-backend.test/api/categories"
+      );
       setNavItems(response.data);
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -54,16 +61,16 @@ const MainNavbar = () => {
   };
 
   const toggleWishlist = (product) => {
-    const isInWishlist = wishlistItems.some(item => item.id === product.id);
+    const isInWishlist = wishlistItems.some((item) => item.id === product.id);
     if (isInWishlist) {
-      setWishlistItems(wishlistItems.filter(item => item.id !== product.id));
+      setWishlistItems(wishlistItems.filter((item) => item.id !== product.id));
     } else {
       setWishlistItems([...wishlistItems, product]);
     }
   };
 
   const removeFromCart = (productId) => {
-    setCartItems(cartItems.filter(item => item.id !== productId));
+    setCartItems(cartItems.filter((item) => item.id !== productId));
   };
 
   const handleSearch = (e) => {
@@ -76,7 +83,7 @@ const MainNavbar = () => {
     id: 1,
     name: "Premium T-Shirt",
     price: 29.99,
-    image: "/path/to/image.jpg"
+    image: "/path/to/image.jpg",
   };
 
   return (
@@ -134,10 +141,20 @@ const MainNavbar = () => {
               </div>
               <div className="col-md-6 text-end">
                 <div className="d-flex justify-content-end gap-4">
-                  <Link to="/about" className="text-white text-decoration-none">About</Link>
-                  <Link to="/contact" className="text-white text-decoration-none">Contact</Link>
+                  <Link to="/about" className="text-white text-decoration-none">
+                    About
+                  </Link>
+                  <Link
+                    to="/contact"
+                    className="text-white text-decoration-none"
+                  >
+                    Contact
+                  </Link>
                   <Link to="/login" className="text-white text-decoration-none">
-                    <User className="me-1" style={{ width: "16px", height: "16px" }} />
+                    <User
+                      className="me-1"
+                      style={{ width: "16px", height: "16px" }}
+                    />
                     Login
                   </Link>
                 </div>
@@ -152,17 +169,23 @@ const MainNavbar = () => {
             <div className="row w-100 align-items-center">
               {/* Logo Section */}
               <div className="col-lg-2 col-md-3 col-6">
-                <Link to="/" className="navbar-brand d-flex align-items-center mb-0 text-decoration-none">
-                  <div className="me-3" style={{
-                    width: "48px",
-                    height: "48px",
-                    background: "linear-gradient(135deg, #dc3545, #c82333)",
-                    borderRadius: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
-                  }}>
+                <Link
+                  to="/"
+                  className="navbar-brand d-flex align-items-center mb-0 text-decoration-none"
+                >
+                  <div
+                    className="me-3"
+                    style={{
+                      width: "48px",
+                      height: "48px",
+                      background: "linear-gradient(135deg, #dc3545, #c82333)",
+                      borderRadius: "12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+                    }}
+                  >
                     <span className="text-white fw-bold fs-5">F&F</span>
                   </div>
                   <div>
@@ -196,7 +219,10 @@ const MainNavbar = () => {
                       className="btn position-absolute end-0 top-50 translate-middle-y pe-3 bg-transparent border-0"
                       style={{ zIndex: 10 }}
                     >
-                      <Search className="text-muted" style={{ width: "20px", height: "20px" }} />
+                      <Search
+                        className="text-muted"
+                        style={{ width: "20px", height: "20px" }}
+                      />
                     </button>
                   </div>
                 </form>
@@ -207,22 +233,29 @@ const MainNavbar = () => {
                 <div className="d-flex align-items-center justify-content-end gap-3">
                   {/* Phone Section */}
                   <div className="d-none d-lg-flex align-items-center phone-section">
-                    <Phone className="text-danger me-2" style={{ width: "20px", height: "20px" }} />
+                    <Phone
+                      className="text-danger me-2"
+                      style={{ width: "20px", height: "20px" }}
+                    />
                     <div>
                       <p className="mb-0 small fw-medium">Call Us Now:</p>
-                      <p className="mb-0 small text-danger fw-semibold">01644460875</p>
+                      <p className="mb-0 small text-danger fw-semibold">
+                        01644460875
+                      </p>
                     </div>
                   </div>
 
                   {/* Action Icons */}
                   <div className="d-flex align-items-center gap-3">
-                    <button 
+                    <button
                       onClick={() => toggleWishlist(sampleProduct)}
                       className="btn btn-light rounded-circle p-2 position-relative cart-icon"
                     >
                       <Heart
                         style={{ width: "20px", height: "20px" }}
-                        className={`text-muted ${wishlistCount > 0 ? "wishlist-active" : ""}`}
+                        className={`text-muted ${
+                          wishlistCount > 0 ? "wishlist-active" : ""
+                        }`}
                       />
                       {wishlistCount > 0 && (
                         <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger badge-notification">
@@ -231,7 +264,7 @@ const MainNavbar = () => {
                       )}
                     </button>
 
-                    <button 
+                    <button
                       onClick={() => addToCart(sampleProduct)}
                       className="btn btn-light rounded-circle p-2 position-relative cart-icon"
                     >
@@ -239,16 +272,17 @@ const MainNavbar = () => {
                         style={{ width: "20px", height: "20px" }}
                         className="text-muted"
                       />
-                      {cartCount > 0 && (
-                        <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger badge-notification">
-                          {cartCount}
-                        </span>
-                      )}
+
+                      <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger badge-notification">
+                        {cartData?.totalQuantity}
+                      </span>
                     </button>
 
                     <div className="d-none d-md-block text-end">
                       <p className="mb-0 small text-muted">Cart total</p>
-                      <p className="mb-0 fs-6 fw-bold text-danger">৳ {cartTotal.toFixed(2)}</p>
+                      <p className="mb-0 fs-6 fw-bold text-danger">
+                        ৳ {cartData?.totalPrice?.toFixed(2)}
+                      </p>
                     </div>
 
                     {/* Mobile Menu Button */}
@@ -303,7 +337,10 @@ const MainNavbar = () => {
                   type="submit"
                   className="btn position-absolute end-0 top-50 translate-middle-y pe-3 bg-transparent border-0"
                 >
-                  <Search className="text-muted" style={{ width: "18px", height: "18px" }} />
+                  <Search
+                    className="text-muted"
+                    style={{ width: "18px", height: "18px" }}
+                  />
                 </button>
               </div>
             </form>
